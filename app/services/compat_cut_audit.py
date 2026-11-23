@@ -1,25 +1,25 @@
-"""换版兼容读轨审计：汇总切流账册与双写两轨两侧引用。"""
+"""换版兼容读轨审计：汇总落点台账与切流账册两侧引用。"""
 from __future__ import annotations
 
-from app.db import get_db
+from app.services.compat_cut import dashboard, list_landings, snapshot
 from app.services.compat_cut_cutover import board as cutover_board
-from app.services.compat_cut_dualwrite import dual_board, half_dual
 
 
 def audit_list(db_path: str | None = None) -> list[dict]:
-    with get_db(db_path) as conn:
-        rows = conn.execute(
-            "SELECT key, value FROM meta WHERE key LIKE ? ORDER BY key",
-            ("compat_cut_evt_%",),
-        ).fetchall()
-        return [{"key": r["key"], "value": r["value"]} for r in rows]
+    return list_landings(db_path)
 
 
 def audit_summary(db_path: str | None = None) -> dict:
+    snap = snapshot(db_path)
     return {
         "title": "换版兼容审计",
-        "events": audit_list(db_path),
+        "fate": "cutover_book",
+        "aligned": snap["aligned"],
+        "reason": snap["reason"],
+        "field_version": snap["field_version"],
+        "pinned_version": snap["pinned_version"],
+        "landing_id": snap["landing_id"],
+        "landings": audit_list(db_path),
         "cutover": cutover_board(db_path),
-        "dualwrite": dual_board(db_path),
-        "half": half_dual(db_path),
+        "header": dashboard(db_path),
     }

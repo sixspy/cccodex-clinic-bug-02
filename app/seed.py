@@ -221,8 +221,9 @@ def seed_if_needed(db_path: str | None = None) -> None:
             """
         )
         try:
-            from app.services.compat_cut import seed_skew
-            seed_skew(db_path)
+            from app.services.compat_cut import bootstrap_landing
+
+            bootstrap_landing(conn)
         except Exception:
             pass
         _meta_set(conn, "seeded", "1")

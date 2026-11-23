@@ -17,7 +17,6 @@ from app.services import reconcile as reconcile_svc
 from app.services import settings as settings_svc
 from app.services import compat_cut as compat_cut_svc
 from app.services import compat_cut_cutover as compat_cut_cutover_svc
-from app.services import compat_cut_dualwrite as compat_cut_dual_svc
 from app.services import sites as sites_svc
 from app.services import visits as visits_svc
 from app.services.errors import ServiceError
@@ -460,7 +459,7 @@ class Api:
     @_wrap
     def compat_cut_half(self):
         _require()
-        return _json(compat_cut_svc.reconcile_display())
+        return _json(compat_cut_svc.half_fix_display())
 
     @cherrypy.expose
     @_wrap
@@ -479,13 +478,6 @@ class Api:
                 str(body.get("note") or "兼容钉定"),
             )
         )
-
-    @cherrypy.expose
-    @_wrap
-    def compat_cut_dual(self):
-        _require()
-        body = _read_json()
-        return _json(compat_cut_dual_svc.apply_dualwrite(str(body.get("note") or "兼容钉定")))
 
     @cherrypy.expose
     @_wrap
@@ -583,8 +575,8 @@ class ApiMount:
                 return api.compat_cut_snap()
             if action == "cutover":
                 return api.compat_cut_cutover()
-            if action == "dual":
-                return api.compat_cut_dual()
+            if action == "landings":
+                return _json({"items": compat_cut_svc.list_landings()})
             return _json({"error": "未知兼容钉定路由"}, 404)
 
         return _json({"error": f"未知接口 {path}"}, 404)

@@ -1,66 +1,49 @@
-"""换版兼容切流账册：应锁当刻指纹并拒回刷；当前只记软笔记。"""
+"""换版兼容 · 甲路切流账册（已选边收口面）。
+
+切流账册只负责把「落台」动作引到唯一的物化落点写入路径，
+读写都以 ``compat_cut_landings`` 的 landed 行为准。
+"""
 from __future__ import annotations
 
-from app.db import get_db
 from app.services.compat_cut import (
-    active_read_ref,
-    cutover_fp,
+    commit_action,
     dashboard,
-    panel_chip,
-    record_event,
-    reject_refresh,
-    truth_flag,
+    list_landings,
+    snapshot,
 )
 
-_SLUG = "compat_cut"
 _TITLE = "换版兼容"
-_OK = "兼容已亮"
-_BAD = "字段版旧"
 
 
 def append_cutover(ref_id: int, note: str, db_path: str | None = None) -> dict:
-    with get_db(db_path) as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
-            (f"{_SLUG}_cutover_note_{ref_id}", note or _TITLE),
-        )
-        # missing: durable fp lock + reject_refresh=1 + active_read=cutover_book
-        conn.execute(
-            "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
-            (f"{_SLUG}_panel_chip", _OK),
-        )
-    record_event(f"cutover-note ref={ref_id} {note}", db_path)
-    return {
-        "ref_id": ref_id,
-        "note": note,
-        "panel": panel_chip(db_path),
-        "truth": truth_flag(db_path),
-        "active_read": active_read_ref(db_path),
-        "cutover_fp": cutover_fp(db_path),
-        "reject_refresh": reject_refresh(db_path),
-    }
+    """切流账册落台：钉住当刻字段版号与指纹，写 durable 落点行。"""
+    result = commit_action(
+        {"ref_id": int(ref_id or 0), "note": (note or _TITLE)[:200]},
+        db_path,
+    )
+    result["ref_id"] = int(ref_id or 0)
+    return result
 
 
 def cutover_rows(db_path: str | None = None) -> list[dict]:
-    with get_db(db_path) as conn:
-        rows = conn.execute(
-            "SELECT key, value FROM meta WHERE key LIKE ? ORDER BY key",
-            (f"{_SLUG}_cutover_%",),
-        ).fetchall()
-        return [
-            {
-                "key": r["key"],
-                "value": r["value"],
-                "chip": panel_chip(db_path),
-                "active_read": active_read_ref(db_path),
-            }
-            for r in rows
-        ]
+    snap = snapshot(db_path)
+    return [
+        {
+            "key": f"compat_cut_landing_{row['id']}",
+            "value": row["fingerprint"],
+            "field_version": row["field_version"],
+            "read_track": row["read_track"],
+            "reject_refresh": row["reject_refresh"],
+            "status": row["status"],
+            "chip": snap["panel_chip"],
+            "aligned": snap["aligned"],
+        }
+        for row in list_landings(db_path)
+    ]
 
 
 def board(db_path: str | None = None) -> dict:
     dash = dashboard(db_path)
     dash["cutover"] = cutover_rows(db_path)
     dash["fate"] = "cutover_book"
-    dash["panel_pack_mismatch"] = dash.get("panel_pack_mismatch", True)
     return dash

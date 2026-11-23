@@ -107,6 +107,25 @@ CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- 换版兼容落点（甲路：物化包钉住当刻字段版号与指纹，读侧只认本表 landed 行）
+CREATE TABLE IF NOT EXISTS compat_cut_landings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  note TEXT NOT NULL DEFAULT '',
+  field_version TEXT NOT NULL DEFAULT '',
+  fingerprint TEXT NOT NULL,
+  read_track TEXT NOT NULL DEFAULT 'cutover_book'
+    CHECK (read_track IN ('cutover_book')),
+  reject_refresh INTEGER NOT NULL DEFAULT 1
+    CHECK (reject_refresh IN (0, 1)),
+  status TEXT NOT NULL DEFAULT 'landed'
+    CHECK (status IN ('landed', 'archived')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 同一时刻只允许一条 landed 落点，争用写入无法双成功踩掉钉点
+CREATE UNIQUE INDEX IF NOT EXISTS ux_compat_cut_one_landed
+  ON compat_cut_landings(status) WHERE status='landed';
 """
 
 
@@ -124,9 +143,10 @@ def ensure_db() -> Path:
 def get_db(db_path: str | Path | None = None):
     path = Path(db_path) if db_path else Config.DATABASE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=10000")
     try:
         yield conn
         conn.commit()

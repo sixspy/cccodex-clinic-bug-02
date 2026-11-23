@@ -1,6 +1,5 @@
 import { api, chip, escapeHtml } from '../api.js';
 
-/* compat_cut-board */
 export async function renderReconcile(el) {
   const [dash, reports, matrix, audits] = await Promise.all([
     api('/api/dashboard'),
@@ -11,7 +10,7 @@ export async function renderReconcile(el) {
 
   el.innerHTML = `
     <div class="card">
-      <h2><span class="chip" data-thick="compat_cut">兼容已亮</span> 访视对账台</h2>
+      <h2>访视对账台</h2>
       <p class="muted">对照缺口行、开放质控发现与补采队列，找出无发现缺口、陈旧发现、未覆盖补采等不一致。</p>
       <div class="grid">
         <div class="stat"><div class="n">${dash.gaps}</div><div class="l">当前缺口行</div></div>

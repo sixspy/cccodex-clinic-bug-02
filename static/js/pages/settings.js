@@ -36,7 +36,6 @@ export async function renderSettings(el) {
       <h2>预留切口（后续题面）</h2>
       <ul class="muted">
         <li>访视行跨中心去重策略与冲突裁决面板</li>
-        <li>方案换版后存量批次字段兼容扫描</li>
         <li>补采任务分片与并发上限</li>
         <li>对账报告导出与差异工单</li>
       </ul>
@@ -62,40 +61,4 @@ export async function renderSettings(el) {
       }
     };
   });
-
-  try {
-    const dash = await api('/api/compat_cut/dash');
-    el.innerHTML += `<div class="card" style="margin-top:1rem">
-      <h3>兼容钉定</h3>
-      <span class="chip">${dash.chip}</span>
-      <p class="muted">读轨 ${dash.active_read} · 切流指纹 ${dash.cutover_fp || '空'} · 拒回刷 ${dash.reject_refresh} · 归档 ${dash.archive_count} · 新旗 ${dash.live_flag || '空'} · 对齐差 ${dash.panel_pack_mismatch}</p>
-      <div class="row">
-        <button id="go_compat_cut" type="button">落台</button>
-        <button id="half_compat_cut" type="button">半修对齐</button>
-        <button id="cut_compat_cut" type="button">切流账册</button>
-        <button id="dual_compat_cut" type="button">双写两轨</button>
-      </div>
-    </div>`;
-    const go = el.querySelector('#go_compat_cut');
-    if (go) go.onclick = async () => {
-      await api('/api/compat_cut/commit', { method:'POST', body: JSON.stringify({ref:1}) });
-      await renderSettings(el);
-    };
-    const half = el.querySelector('#half_compat_cut');
-    if (half) half.onclick = async () => {
-      await api('/api/compat_cut/half', { method:'POST', body:'{}' });
-      await renderSettings(el);
-    };
-    const cut = el.querySelector('#cut_compat_cut');
-    if (cut) cut.onclick = async () => {
-      await api('/api/compat_cut/cutover', { method:'POST', body: JSON.stringify({ref_id:1, note:'换版兼容'}) });
-      await renderSettings(el);
-    };
-    const dual = el.querySelector('#dual_compat_cut');
-    if (dual) dual.onclick = async () => {
-      await api('/api/compat_cut/dual', { method:'POST', body: JSON.stringify({note:'换版兼容'}) });
-      await renderSettings(el);
-    };
-  } catch (e) { /* optional surface */ }
-
 }

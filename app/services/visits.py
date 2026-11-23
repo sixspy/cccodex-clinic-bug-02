@@ -182,6 +182,9 @@ def add_visit_row(
     quality: str | None = None,
     db_path: str | None = None,
 ) -> dict:
+    from app.services.compat_cut import require_pack_or_raise
+
+    require_pack_or_raise(db_path)
     subject_key = (subject_key or "").strip()
     visit_code = (visit_code or "").strip().upper()
     payload = payload if payload is not None else ""
@@ -276,6 +279,9 @@ def mock_crawl(
     mix_bad: bool = True,
     db_path: str | None = None,
 ) -> dict:
+    from app.services.compat_cut import require_pack_or_raise
+
+    require_pack_or_raise(db_path)
     count = max(1, min(30, int(count or 5)))
     created = []
     with get_db(db_path) as conn:
